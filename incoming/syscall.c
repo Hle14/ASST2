@@ -148,6 +148,18 @@ md_forkentry(struct trapframe *tf)
 	 *
 	 * Thus, you can trash it and do things another way if you prefer.
 	 */
+
+	int s;
+	s = splhigh();
+
 	DEBUG(DB_SYSCALL,"forking thread");
-	(void)tf;
+	//(void)tf;
+
+	//
+	tf->tf_v0 = 0; //set return value to 0 for child process
+	tf->tf_epc += 4; //advance pc to avoid restarting syscall
+	tf->tf_a3 = 0; //a3 set to 0 to indicate success
+
+	splx(s);
+	mips_usermode(tf);
 }

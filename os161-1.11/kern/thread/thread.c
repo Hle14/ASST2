@@ -22,6 +22,14 @@ typedef enum {
 	S_ZOMB,
 } threadstate_t;
 
+ 
+pidroot = (struct node *) malloc( sizeof(struct node) ); 
+pidroot->next = 0;  
+pidroot->used=1;
+pidroot->id = 0;  
+pidroot->waiting=0;
+pidroot->sem = sem_create("waitp",0);
+
 /* Global variable for the thread currently executing at any given time. */
 struct thread *curthread;
 
@@ -59,6 +67,39 @@ thread_create(const char *name)
 
 	thread->t_cwd = NULL;
 	
+	/////Issues new pids from 1 onwords
+	struct node *temp=pidroot;
+	while (true){
+		//used
+		if (temp->used==1){
+			//no next node then add to the end of the linked list
+			if (temp->next==0){
+				struct node* end; 
+				end = (struct node *) malloc( sizeof(struct node) ); 
+				end->next = 0;  
+				end->used=1;
+				end->id = temp->id+1; 
+				end->waiting=0;
+				end->sem = sem_create("waitp",0);
+				temp->next=end;
+				thread->sPid=end;
+				break;
+			}
+			//move to the next node
+			else{
+				temp=temp->next;
+			}
+		}
+		//not used current node make it used
+		else{
+			thread->sPid=temp;
+			thread->sPid->used=0;
+			break;
+		}
+	
+	}
+	
+	
 	// If you add things to the thread structure, be sure to initialize
 	// them here.
 	
@@ -76,7 +117,7 @@ void
 thread_destroy(struct thread *thread)
 {
 	assert(thread != curthread);
-
+	DEBUG(DB_THREADS,"Destroyed thread ->  %s",thread->t_name);
 	// If you add things to the thread structure, be sure to dispose of
 	// them here or in thread_exit.
 
@@ -239,6 +280,8 @@ thread_fork(const char *name,
 
 	/* Allocate a thread */
 	newguy = thread_create(name);
+	DEBUG(DB_THREADS,"Thread %s forked",newguy->t_name);
+
 	if (newguy==NULL) {
 		return ENOMEM;
 	}
@@ -428,6 +471,7 @@ mi_switch(threadstate_t nextstate)
 void
 thread_exit(void)
 {
+	
 	if (curthread->t_stack != NULL) {
 		/*
 		 * Check the magic number we put on the bottom end of

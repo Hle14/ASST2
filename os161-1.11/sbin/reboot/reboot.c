@@ -10,6 +10,7 @@
 int
 main()
 {
+	printf("Just stopping execution");
 	reboot(RB_REBOOT);
 	return 0;
 }
