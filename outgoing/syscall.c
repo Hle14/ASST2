@@ -86,22 +86,23 @@ mips_syscall(struct trapframe *tf)
 		
 		case SYS__exit:
 		
-			retval = ((int32_t)sys__exit(tf->tf_a0));
+			retval = ((int32_t)sys__exit());
 			err=retval;
 			break;
 			
 		case SYS_fork:
 			//http://jhshi.me/2012/03/21/os161-how-to-add-a-system-call/
-			err = sys_fork(&retval, tf);
+			err = ((int32_t)sys_fork(tf));
 			break;
 		case SYS_execv:
 			break;
 
 		case SYS_read:
-			err = ((int32_t)sys_read(tf->tf_a0,(userptr_t)tf->tf_a1,tf->tf_a2));
+			//err = ((int32_t)sys_read(tf->tf_a0,(userptr_t)tf->tf_a1,tf->tf_a2)); //original
+			err = ((int32_t)sys_read(tf->tf_a0,(char*)tf->tf_a1,tf->tf_a2));
 			break;
 		case SYS_write:
-			err = ((int32_t)sys_write(tf->tf_a0,(userptr_t)tf->tf_a1,tf->tf_a2));
+			err = ((int32_t)sys_write(tf->tf_a0,(char*)tf->tf_a1,tf->tf_a2));
 			break;
 	    default:
 		kprintf("Unknown syscall %d\n", callno);

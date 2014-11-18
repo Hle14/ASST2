@@ -1,8 +1,13 @@
 //simple_syscalls.c
-#include <current.h>
+//#include <current.h>
 #include <synch.h>
 #include <syscall.h>
 #include <thread.h>
+#include <curthread.h>
+#include <lib.h>
+#include <machine/trapframe.h>
+#include <addrspace.h>
+#include <types.h>
 //2^32-1
 
 
@@ -75,7 +80,7 @@ sys__exit(void) {
 int sys_fork(struct trapframe *tf)
 {
 	//save the id of the parent to figure out which value fork should return, 0 to child, pid of child to parent
-	pid_t parent_pid = curthread->sPid->id;
+	//pid_t parent_pid = curthread->sPid->id;
 
 	//declare trapframe and address-space for new thread
 	struct trapframe *new_tf;
@@ -101,7 +106,7 @@ int sys_fork(struct trapframe *tf)
 
 	result = 0;
 	//thread_fork(curthread->t_name, (void*)tf_copy, 0, md_forkentry, &child_thread);
-	result = thread_fork(curthread->t_name,&tf,0,md_forkentry,&child_thread);
+	result = thread_fork(curthread->t_name,&tf,0,&md_forkentry,&child_thread);
 	if(result)
 	{
 		//thread fork failed
@@ -119,12 +124,54 @@ int sys_fork(struct trapframe *tf)
 int sys_execv(char *progname,char** argv,int *retval)
 {
 	//copy args from user space into kernel buffer
-
 	//open executable, create new addrspace and load elf into it
 	//copy args from kernel buffer into user stack
 	//return to user mode
 }
 */
+
+int sys_execv(userptr_t progname,userptr_t args)
+{
+	/*
+		1. copy args from user space into kernel buffer
+	*/
+
+	//may need to use copyinstr, since what we get is just a pointer to a char array, or maybe not...
+
+	//need to read argument vector one null-terminated string at a time
+	//first determine argc, number of pointers in args
+	int argc = 0;
+	while(args[i] != 0)
+	{
+		argc++;
+	}//until we encounter a NULL pointer
+	
+		//argc incremented for every argument read
+		//pack the read argument into a buffer, (kernel buffer)
+	//stop looping when NULL pointer is encountered
+
+	/*
+		2. open executable, create new addrspace and load elf into it
+	*/
+
+	//use the read in progname to open the file
+	//destroy old address space
+	//create new address space
+	//activate the address space
+	//load_elf into the addrspace
+	//close file
+
+	/*
+		3. copy args from kernel buffer into user stack
+	*/
+
+	//
+	//define user stack in address space
+
+	/*
+		4. return to user mode
+	*/
+}
 
 /*
  *  Simple workaround for system call read(int, char *, int).
