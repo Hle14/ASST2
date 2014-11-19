@@ -79,8 +79,10 @@ mips_syscall(struct trapframe *tf)
 			
 		case SYS_waitpid:
 			//just passing the the first arg from users waitpid
-			err = (sys_waitpid(tf->tf_a0,&retval,0));
+			retval = ((int32_t)sys_waitpid(tf->tf_a0));
+			err=retval;
 			break;
+			
 		
 		case SYS__exit:
 		
@@ -157,5 +159,6 @@ md_forkentry(struct trapframe *tf)
 	tf->tf_a3 = 0; //a3 set to 0 to indicate success
 
 	splx(s);
+	//as_activate(curthread->t_vmspace);
 	mips_usermode(tf);
 }

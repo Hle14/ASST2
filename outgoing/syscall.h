@@ -9,7 +9,8 @@
 
 
 int sys_reboot(int code);
-int sys_waitpid(pid_t pid);
+//int sys_waitpid(pid_t pid);
+pid_t waitpid(pid_t pid, int *status, int options);
 int sys_getpid(void);
 int sys__exit(void);
 

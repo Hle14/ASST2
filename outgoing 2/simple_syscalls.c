@@ -7,7 +7,6 @@
 #include <lib.h>
 #include <machine/trapframe.h>
 #include <addrspace.h>
-#include <types.h>
 //2^32-1
 
 
@@ -103,12 +102,10 @@ int sys_fork(struct trapframe *tf)
 	}
 
 	struct thread *child_thread;
-	child_thread->t_vmspace = new_addrspace;
+
 	result = 0;
 	//thread_fork(curthread->t_name, (void*)tf_copy, 0, md_forkentry, &child_thread);
-	//result = thread_fork(curthread->t_name,&tf,0,&md_forkentry,&child_thread);
-	//result = thread_fork(curthread->t_name,new_tf,0,&md_forkentry,&child_thread);
-	result = thread_fork("child process",new_tf,(unsigned long)new_addrspace,&md_forkentry,&child_thread);
+	result = thread_fork(curthread->t_name,new_tf,0,&md_forkentry,&child_thread);
 	if(result)
 	{
 		//thread fork failed
@@ -122,63 +119,16 @@ int sys_fork(struct trapframe *tf)
 	return child_thread->sPid->id; //parent returns with child pid
 }
 
-int sys_execv(userptr_t progname,userptr_t args)
+/*
+int sys_execv(char *progname,char** argv,int *retval)
 {
-	/*
-		1. copy args from user space into kernel buffer
-	*/
+	//copy args from user space into kernel buffer
 
-	size_t len, stackoffset = 0;
-	vaddr_t argvptr[strlen(args) + 1];
-
-	int i=0;
-	for(i=0;i<strlen(args);i++)
-	{
-		len = strlen(args[i]) + 1;
-		stackoffset += len;
-		argvptr[i] = stackptr - stackoffset;
-		copyout(args[i],(userptr_t)argvptr[i],len);
-	}
-	argvptr[strlen(args)] = '\0';
-	stackoffset += sizeof(vaddr_t) * (strlen(args) + 1);
-	stackptr = stackptr - stackoffset - ((stackptr - stackoffset)%8);
-	
-	copyout(argvptr,(userptr_t)stackptr,sizeof(vaddr_t)*(argc+1));
-	/*
-		2. open executable, create new addrspace and load elf into it
-	*/
-
-	struct vnode *v;
-	vaddr_t entrypoint,stackptr;
-	int result;
-
-	//use the read in progname to open the file
-	result = vfs_open(progname,O_RDONLY,&v);
-	if(result) return result;
-
-	assert(curthread->t_vmspace!=NULL);
-
-	as_destroy(curthread->t_vmspace);//destroy old address space
-	
-	curthread->t_vmspace = as_create();//create new address space
-	as_activate(curthread->t_vmspace);//activate the address space
-	result = load_elf(v,&entrypoint);//load_elf into the addrspace
-	if(result) return result;
-
-	vfs_close(v);//close file
-
-	/*
-		3. copy args from kernel buffer into user stack
-	*/
-
-	//
-	//define user stack in address space
-
-	/*
-		4. return to user mode
-	*/
-	md_usermode(strlen(args),(userptr_t)stackptr,stackptr,entrypoint)
+	//open executable, create new addrspace and load elf into it
+	//copy args from kernel buffer into user stack
+	//return to user mode
 }
+*/
 
 /*
  *  Simple workaround for system call read(int, char *, int).

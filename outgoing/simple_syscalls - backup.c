@@ -126,46 +126,55 @@ int sys_execv(userptr_t progname,userptr_t args)
 {
 	/*
 		1. copy args from user space into kernel buffer
+		(first, figuring out how much space we'll need
+		to allocate in order to fit everything in the buffer)
 	*/
 
-	size_t len, stackoffset = 0;
-	vaddr_t argvptr[strlen(args) + 1];
+	//may need to use copyinstr, since what we get is just a pointer to a char array, or maybe not...
 
-	int i=0;
-	for(i=0;i<strlen(args);i++)
+	//need to read argument vector one null-terminated string at a time
+	int argc = 0;
+	int len = 0; //will keep track of number of int-sized blocks to allocate
+	//ASSUMPTION: we don't know how many arguments there are and there could be more than 4 arguments
+	//first, determine argc and total size
+	while(args[argc] != '\0') //until we get a NULL pointer, keep reading arguments
 	{
-		len = strlen(args[i]) + 1;
-		stackoffset += len;
-		argvptr[i] = stackptr - stackoffset;
-		copyout(args[i],(userptr_t)argvptr[i],len);
+		int argsize = strlen(args[argc]) + 1; //length of unpadded string + NULL char
+		len += (argsize / 4) + ((argsize % 4) ? 0 : 1);//keep track of total length of argument vector (actual length + 1 for NULL terminator)
+		argc++; //increment argc to reflect the number of arguments
 	}
-	argvptr[strlen(args)] = '\0';
-	stackoffset += sizeof(vaddr_t) * (strlen(args) + 1);
-	stackptr = stackptr - stackoffset - ((stackptr - stackoffset)%8);
 	
-	copyout(argvptr,(userptr_t)stackptr,sizeof(vaddr_t)*(argc+1));
+	//create a buffer and fill it w/ our pointers and arguments
+	char *kargv;
+
+	kargv = kmalloc(sizeof(int) * (len + argc + 1));
+	//copy argument pointers
+	result = copyin(args,kargv,argc*4);
+	if(result)
+	{
+		return result;
+	}
+	//copy arguments from argv into kargv
+	int i;
+	int dummy;
+	for(i=0;i<argc;i++)
+	{
+		result = copyinstr((userptr_t)args[i],kargv[i],1024,&dummy);
+		if(result)
+		{
+			return result;
+		}
+	}
 	/*
 		2. open executable, create new addrspace and load elf into it
 	*/
 
-	struct vnode *v;
-	vaddr_t entrypoint,stackptr;
-	int result;
-
 	//use the read in progname to open the file
-	result = vfs_open(progname,O_RDONLY,&v);
-	if(result) return result;
-
-	assert(curthread->t_vmspace!=NULL);
-
-	as_destroy(curthread->t_vmspace);//destroy old address space
-	
-	curthread->t_vmspace = as_create();//create new address space
-	as_activate(curthread->t_vmspace);//activate the address space
-	result = load_elf(v,&entrypoint);//load_elf into the addrspace
-	if(result) return result;
-
-	vfs_close(v);//close file
+	//destroy old address space
+	//create new address space
+	//activate the address space
+	//load_elf into the addrspace
+	//close file
 
 	/*
 		3. copy args from kernel buffer into user stack
@@ -177,7 +186,6 @@ int sys_execv(userptr_t progname,userptr_t args)
 	/*
 		4. return to user mode
 	*/
-	md_usermode(strlen(args),(userptr_t)stackptr,stackptr,entrypoint)
 }
 
 /*
